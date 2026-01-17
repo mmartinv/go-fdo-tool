@@ -1,0 +1,103 @@
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+
+categories:
+  - title: '🚀 Features'
+    labels:
+      - 'feature'
+      - 'enhancement'
+    collapse-after: 10
+  - title: '🐛 Bug Fixes'
+    labels:
+      - 'fix'
+      - 'bugfix'
+      - 'bug'
+    collapse-after: 10
+  - title: '🔒 Security'
+    labels:
+      - 'security'
+  - title: '📚 Documentation'
+    labels:
+      - 'documentation'
+      - 'docs'
+  - title: '🔧 Maintenance'
+    labels:
+      - 'chore'
+      - 'dependencies'
+      - 'deps'
+    collapse-after: 5
+  - title: '⚡ Performance'
+    labels:
+      - 'performance'
+      - 'perf'
+
+change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
+change-title-escapes: '\<*_&'
+
+version-resolver:
+  major:
+    labels:
+      - 'major'
+      - 'breaking'
+  minor:
+    labels:
+      - 'minor'
+      - 'feature'
+      - 'enhancement'
+  patch:
+    labels:
+      - 'patch'
+      - 'fix'
+      - 'bugfix'
+      - 'bug'
+      - 'dependencies'
+      - 'deps'
+  default: patch
+
+autolabeler:
+  - label: 'documentation'
+    files:
+      - '*.md'
+      - 'docs/**/*'
+  - label: 'bug'
+    branch:
+      - '/fix\/.+/'
+    title:
+      - '/fix/i'
+  - label: 'feature'
+    branch:
+      - '/feat(ure)?\/.+/'
+    title:
+      - '/feat/i'
+  - label: 'dependencies'
+    files:
+      - 'go.mod'
+      - 'go.sum'
+  - label: 'ci'
+    files:
+      - '.github/**/*'
+
+template: |
+  ## What's Changed
+
+  $CHANGES
+
+  **Full Changelog**: https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION
+
+  ## Installation
+
+  Download the appropriate binary for your platform from the assets below.
+
+  ### Using Go
+
+  ```bash
+  go install github.com/mmartinv/go-fdo-tool@v$RESOLVED_VERSION
+  ```
+
+  ### Verifying Downloads
+
+  All release artifacts are checksummed. Verify your download with:
+
+  ```bash
+  sha256sum -c checksums.txt
+  ```
