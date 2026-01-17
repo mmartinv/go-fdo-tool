@@ -1,0 +1,46 @@
+# Automatically label PRs based on changed files
+
+# Documentation changes
+documentation:
+  - changed-files:
+    - any-glob-to-any-file: ['*.md', 'docs/**/*']
+
+# Voucher package changes
+voucher:
+  - changed-files:
+    - any-glob-to-any-file: 'pkg/voucher/**/*'
+
+# Command changes
+cmd:
+  - changed-files:
+    - any-glob-to-any-file: 'cmd/**/*'
+
+# Main entry point
+main:
+  - changed-files:
+    - any-glob-to-any-file: 'main.go'
+
+# Test changes
+tests:
+  - changed-files:
+    - any-glob-to-any-file: '**/*_test.go'
+
+# CI/CD changes
+ci:
+  - changed-files:
+    - any-glob-to-any-file: ['.github/**/*', '.golangci.yml', '.commitlintrc.yml', '.cspell.json']
+
+# Go module changes
+dependencies:
+  - changed-files:
+    - any-glob-to-any-file: ['go.mod', 'go.sum']
+
+# Example files
+examples:
+  - changed-files:
+    - any-glob-to-any-file: 'example/**/*'
+
+# Configuration files
+configuration:
+  - changed-files:
+    - any-glob-to-any-file: ['*.yml', '*.yaml', '*.json', '.gitignore']
