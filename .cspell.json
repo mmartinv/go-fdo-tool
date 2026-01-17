@@ -133,7 +133,13 @@
     "qemu",
     "buildx",
     "ghcr",
-    "Quay"
+    "Quay",
+    "coverprofile",
+    "Errorf",
+    "RVIP",
+    "ofdo",
+    "commitlintrc",
+    "hotspots"
   ],
   "flagWords": [],
   "ignoreRegExpList": [
