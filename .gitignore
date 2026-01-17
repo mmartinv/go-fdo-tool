@@ -1,0 +1,38 @@
+# Binaries
+go-fdo-tool
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test files
+sample-voucher.json
+extended-voucher.json
+new-owner-cert.pem
+*.pem
+*.crt
+*.key
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Build artifacts
+dist/
+build/
+
+# Test coverage
+coverage.out
+
+# SonarQube
+.sonar/
+.scannerwork/
+
+# GoReleaser
+.goreleaser/
+
+# License reports
+licenses.txt
