@@ -31,8 +31,9 @@ rules:
     - never
 
   # Subject should be in sentence-case or lower-case
+  # Disabled to allow proper nouns (Go, Alpine, GitHub, etc.)
   subject-case:
-    - 2
+    - 0
     - always
     - - sentence-case
       - lower-case
@@ -49,8 +50,9 @@ rules:
     - always
 
   # Footer should have a leading blank line
+  # Disabled because we use bullet lists in commit bodies
   footer-leading-blank:
-    - 2
+    - 0
     - always
 
   # Scope is optional
