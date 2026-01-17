@@ -1,0 +1,69 @@
+extends:
+  - '@commitlint/config-conventional'
+
+rules:
+  # Type enum
+  type-enum:
+    - 2
+    - always
+    - - build
+      - chore
+      - ci
+      - deps
+      - docs
+      - feat
+      - fix
+      - perf
+      - refactor
+      - revert
+      - style
+      - test
+
+  # Type case should be lower-case
+  type-case:
+    - 2
+    - always
+    - lower-case
+
+  # Subject should not be empty
+  subject-empty:
+    - 2
+    - never
+
+  # Subject should be in sentence-case or lower-case
+  subject-case:
+    - 2
+    - always
+    - - sentence-case
+      - lower-case
+
+  # Header max length (including type, scope, and subject)
+  header-max-length:
+    - 2
+    - always
+    - 100
+
+  # Body should have a leading blank line
+  body-leading-blank:
+    - 2
+    - always
+
+  # Footer should have a leading blank line
+  footer-leading-blank:
+    - 2
+    - always
+
+  # Scope is optional
+  scope-empty:
+    - 0
+
+  # Allow specific scopes (optional)
+  scope-enum:
+    - 0
+    - always
+    - - voucher
+      - cmd
+      - ci
+      - deps
+      - docs
+      - workflow
