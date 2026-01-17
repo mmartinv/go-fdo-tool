@@ -1,0 +1,47 @@
+name: Go Formatting
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  formatting:
+    name: Check Go Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Install goimports
+        run: go install golang.org/x/tools/cmd/goimports@latest
+
+      - name: Check gofmt
+        run: |
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "Go code is not formatted. Please run 'gofmt -w .'"
+            gofmt -d .
+            exit 1
+          fi
+
+      - name: Check goimports
+        run: |
+          if [ -n "$(goimports -l .)" ]; then
+            echo "Go imports are not formatted. Please run 'goimports -w .'"
+            goimports -d .
+            exit 1
+          fi
+
+      - name: Check go mod tidy
+        run: |
+          go mod tidy
+          if ! git diff --exit-code go.mod go.sum; then
+            echo "go.mod or go.sum is not tidy. Please run 'go mod tidy'"
+            exit 1
+          fi
