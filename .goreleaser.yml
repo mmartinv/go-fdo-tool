@@ -1,0 +1,196 @@
+version: 2
+
+before:
+  hooks:
+    # Ensure dependencies are up to date
+    - go mod tidy
+    # Run tests
+    - go test ./...
+
+builds:
+  - id: go-fdo-tool
+    binary: go-fdo-tool
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    # Skip windows/arm64 as it's not commonly used
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+    flags:
+      - -trimpath
+
+archives:
+  - id: default
+    format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - LICENSE
+      - README.md
+      - CONTRIBUTING.md
+
+dockers:
+  # GitHub Container Registry
+  - image_templates:
+      - "ghcr.io/mmartinv/go-fdo-tool:{{ .Version }}-amd64"
+      - "ghcr.io/mmartinv/go-fdo-tool:latest-amd64"
+    dockerfile: Containerfile
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--platform=linux/amd64"
+    goos: linux
+    goarch: amd64
+
+  - image_templates:
+      - "ghcr.io/mmartinv/go-fdo-tool:{{ .Version }}-arm64"
+      - "ghcr.io/mmartinv/go-fdo-tool:latest-arm64"
+    dockerfile: Containerfile
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--platform=linux/arm64"
+    goos: linux
+    goarch: arm64
+
+  # Quay.io
+  - image_templates:
+      - "quay.io/mmartinv/go-fdo-tool:{{ .Version }}-amd64"
+      - "quay.io/mmartinv/go-fdo-tool:latest-amd64"
+    dockerfile: Containerfile
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--platform=linux/amd64"
+    goos: linux
+    goarch: amd64
+
+  - image_templates:
+      - "quay.io/mmartinv/go-fdo-tool:{{ .Version }}-arm64"
+      - "quay.io/mmartinv/go-fdo-tool:latest-arm64"
+    dockerfile: Containerfile
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--platform=linux/arm64"
+    goos: linux
+    goarch: arm64
+
+docker_manifests:
+  # GitHub Container Registry manifests
+  - name_template: "ghcr.io/mmartinv/go-fdo-tool:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/mmartinv/go-fdo-tool:{{ .Version }}-amd64"
+      - "ghcr.io/mmartinv/go-fdo-tool:{{ .Version }}-arm64"
+
+  - name_template: "ghcr.io/mmartinv/go-fdo-tool:latest"
+    image_templates:
+      - "ghcr.io/mmartinv/go-fdo-tool:latest-amd64"
+      - "ghcr.io/mmartinv/go-fdo-tool:latest-arm64"
+
+  # Quay.io manifests
+  - name_template: "quay.io/mmartinv/go-fdo-tool:{{ .Version }}"
+    image_templates:
+      - "quay.io/mmartinv/go-fdo-tool:{{ .Version }}-amd64"
+      - "quay.io/mmartinv/go-fdo-tool:{{ .Version }}-arm64"
+
+  - name_template: "quay.io/mmartinv/go-fdo-tool:latest"
+    image_templates:
+      - "quay.io/mmartinv/go-fdo-tool:latest-amd64"
+      - "quay.io/mmartinv/go-fdo-tool:latest-arm64"
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+      - 'README'
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: Performance Improvements
+      regexp: '^.*?perf(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: Dependency Updates
+      regexp: '^.*?deps(\([[:word:]]+\))??!?:.+$'
+      order: 3
+    - title: Other Changes
+      order: 999
+
+release:
+  github:
+    owner: mmartinv
+    name: go-fdo-tool
+  draft: false
+  prerelease: auto
+  mode: replace
+  header: |
+    ## FDO Voucher Tool {{ .Tag }}
+
+    A command line tool for managing FIDO Device Onboard (FDO) ownership vouchers.
+
+    ### Installation
+
+    Download the appropriate binary for your platform below.
+
+  footer: |
+    **Full Changelog**: https://github.com/mmartinv/go-fdo-tool/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+    ## Container Images
+
+    Multi-architecture container images are available at:
+    - GitHub Container Registry: `ghcr.io/mmartinv/go-fdo-tool:{{ .Tag }}`
+    - Quay.io: `quay.io/mmartinv/go-fdo-tool:{{ .Tag }}`
+
+    Both support amd64 and arm64 architectures.
