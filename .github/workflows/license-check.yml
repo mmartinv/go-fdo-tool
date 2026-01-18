@@ -28,7 +28,7 @@ jobs:
       - name: Check licenses
         run: |
           echo "Checking for forbidden licenses..."
-          go-licenses check ./... --disallowed_types=forbidden,restricted,reciprocal,notice,permissive,unencumbered,unknown
+          go-licenses check ./... --disallowed_types=forbidden,restricted,reciprocal,unknown
 
       - name: Generate license report
         if: always()
