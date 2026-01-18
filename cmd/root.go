@@ -9,8 +9,8 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   "go-fdo-tool",
-	Short: "A CLI tool for managing FDO ownership vouchers",
-	Long:  `A command line tool for working with FIDO Device Onboard (FDO) ownership vouchers.`,
+	Short: "A CLI tool for managing FDO ownership vouchers and device credentials",
+	Long:  `A command line tool for working with FIDO Device Onboard (FDO) ownership vouchers and device credentials.`,
 }
 
 func Execute() {
@@ -22,4 +22,5 @@ func Execute() {
 
 func init() {
 	rootCmd.AddCommand(voucherCmd)
+	rootCmd.AddCommand(credentialCmd)
 }
