@@ -4,7 +4,7 @@ This project uses GitHub Actions for CI/CD with multiple automated checks:
 
 ## Test Workflow
 
-- Runs tests on Ubuntu and macOS with Go 1.23, 1.24, and 1.25
+- Runs tests on Ubuntu and macOS with Go 1.25
 - Executes tests with race detector
 - Generates coverage reports (91.8% coverage)
 - Uploads coverage to Codecov
