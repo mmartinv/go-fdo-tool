@@ -1,3 +1,5 @@
+version: 2
+
 run:
   timeout: 5m
   tests: true
@@ -6,13 +8,10 @@ run:
 linters:
   enable:
     - errcheck
-    - gosimple
     - govet
     - ineffassign
     - staticcheck
     - unused
-    - gofmt
-    - goimports
     - misspell
     - unconvert
     - unparam
@@ -39,16 +38,32 @@ linters-settings:
 
 issues:
   exclude-rules:
-    # Exclude some linters from running on tests files
+    # Exclude some linters from running on test files
     - path: _test\.go
       linters:
         - gosec
         - unparam
+        - errcheck  # Allow unchecked errors for cleanup in tests
 
     # Ignore long lines in tests
     - path: _test\.go
       linters:
         - lll
+
+    # G304: File path variable is expected in CLI tool
+    - linters:
+        - gosec
+      text: "G304:"
+
+    # G306: Public keys and vouchers should be world-readable (0644)
+    - linters:
+        - gosec
+      text: "G306:"
+
+    # Allow missing package comments
+    - linters:
+        - revive
+      text: "package-comments:"
 
   max-same-issues: 0
   max-issues-per-linter: 0

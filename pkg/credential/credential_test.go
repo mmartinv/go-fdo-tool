@@ -19,7 +19,7 @@ import (
 
 // Test data paths
 const (
-	testDataDir = "../../example"
+	testDataDir = "testdata"
 )
 
 func TestLoadFromFile(t *testing.T) {
