@@ -141,7 +141,14 @@
     "commitlintrc",
     "hotspots",
     "keygen",
-    "credential"
+    "credential",
+    "workflow",
+    "workflows",
+    "maintainability",
+    "readability",
+    "organization",
+    "yml",
+    "yaml"
   ],
   "flagWords": [],
   "ignoreRegExpList": [
