@@ -148,7 +148,9 @@
     "readability",
     "organization",
     "yml",
-    "yaml"
+    "yaml",
+    "HEXVALUE",
+    "ECDSAP"
   ],
   "flagWords": [],
   "ignoreRegExpList": [
