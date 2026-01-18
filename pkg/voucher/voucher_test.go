@@ -942,3 +942,119 @@ func TestLoadCACertsFromFile(t *testing.T) {
 		t.Error("LoadCACertsFromFile() should error on empty file")
 	}
 }
+
+func TestVerify_WithOptions(t *testing.T) {
+	voucher, err := LoadFromFile(filepath.Join(testDataDir, "voucher.pem"))
+	if err != nil {
+		t.Fatalf("Failed to load test voucher: %v", err)
+	}
+
+	t.Run("with HMAC secret", func(t *testing.T) {
+		// Test with HMAC secret
+		hmacSecret := make([]byte, 32)
+		opts := &VerifyOptions{
+			HmacSecret: hmacSecret,
+		}
+		result := Verify(voucher, opts)
+		// Should include HMAC check (even if it fails with wrong secret)
+		foundHMAC := false
+		for _, check := range result.Checks {
+			if check.Name == "Header HMAC" {
+				foundHMAC = true
+				break
+			}
+		}
+		if !foundHMAC {
+			t.Error("Verify with HmacSecret should include Header HMAC check")
+		}
+	})
+
+	t.Run("with public key hash", func(t *testing.T) {
+		// Test with public key hash
+		hash := protocol.Hash{
+			Algorithm: protocol.Sha256Hash,
+			Value:     make([]byte, 32),
+		}
+		opts := &VerifyOptions{
+			PublicKeyHash: &hash,
+		}
+		result := Verify(voucher, opts)
+		// Should include manufacturer key check
+		foundKeyHash := false
+		for _, check := range result.Checks {
+			if check.Name == "Manufacturer Key Hash" {
+				foundKeyHash = true
+				break
+			}
+		}
+		if !foundKeyHash {
+			t.Error("Verify with PublicKeyHash should include Manufacturer Key Hash check")
+		}
+	})
+
+	t.Run("with trusted roots", func(t *testing.T) {
+		// Create an empty cert pool for testing
+		pool := x509.NewCertPool()
+		opts := &VerifyOptions{
+			TrustedRoots: pool,
+		}
+		result := Verify(voucher, opts)
+		// Should still perform all checks, just with trusted roots
+		if len(result.Checks) == 0 {
+			t.Error("Verify with TrustedRoots should perform checks")
+		}
+	})
+
+	t.Run("with all options", func(t *testing.T) {
+		hmacSecret := make([]byte, 32)
+		hash := protocol.Hash{
+			Algorithm: protocol.Sha256Hash,
+			Value:     make([]byte, 32),
+		}
+		pool := x509.NewCertPool()
+		opts := &VerifyOptions{
+			HmacSecret:    hmacSecret,
+			PublicKeyHash: &hash,
+			TrustedRoots:  pool,
+		}
+		result := Verify(voucher, opts)
+		// Should include all optional checks
+		if len(result.Checks) < 4 {
+			t.Errorf("Verify with all options should perform at least 4 checks, got %d", len(result.Checks))
+		}
+	})
+}
+
+func TestLoadDeviceCredentialFromFile(t *testing.T) {
+	// Test with valid device credential file
+	cred, err := LoadDeviceCredentialFromFile(filepath.Join(testDataDir, "..", "..", "credential", "testdata", "device_credential.cbor"))
+	if err != nil {
+		t.Errorf("LoadDeviceCredentialFromFile() error = %v", err)
+	}
+	if cred == nil {
+		t.Error("LoadDeviceCredentialFromFile() returned nil credential")
+	}
+
+	// Test with non-existent file
+	_, err = LoadDeviceCredentialFromFile("nonexistent.cbor")
+	if err == nil {
+		t.Error("LoadDeviceCredentialFromFile() should error on non-existent file")
+	}
+
+	// Test with invalid CBOR data
+	tmpDir, err := os.MkdirTemp("", "voucher-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	invalidFile := filepath.Join(tmpDir, "invalid.cbor")
+	if err := os.WriteFile(invalidFile, []byte("invalid cbor data"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = LoadDeviceCredentialFromFile(invalidFile)
+	if err == nil {
+		t.Error("LoadDeviceCredentialFromFile() should error on invalid CBOR")
+	}
+}

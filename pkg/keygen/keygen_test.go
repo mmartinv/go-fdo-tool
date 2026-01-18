@@ -280,6 +280,33 @@ func TestSavePublicKey(t *testing.T) {
 	}
 }
 
+func TestSavePrivateKey_ErrorCases(t *testing.T) {
+	key, err := GenerateKey(KeyTypeECDSAP256)
+	if err != nil {
+		t.Fatalf("Failed to generate key: %v", err)
+	}
+
+	// Test with invalid path (directory that doesn't exist)
+	err = SavePrivateKey(key, "/nonexistent/directory/key.pem", FormatPEM)
+	if err == nil {
+		t.Error("SavePrivateKey should error when writing to invalid path")
+	}
+}
+
+func TestSavePublicKey_ErrorCases(t *testing.T) {
+	key, err := GenerateKey(KeyTypeECDSAP256)
+	if err != nil {
+		t.Fatalf("Failed to generate key: %v", err)
+	}
+	pubKey := key.Public()
+
+	// Test with invalid path (directory that doesn't exist)
+	err = SavePublicKey(pubKey, "/nonexistent/directory/key_pub.pem", FormatPEM)
+	if err == nil {
+		t.Error("SavePublicKey should error when writing to invalid path")
+	}
+}
+
 func TestGetKeyInfo(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -375,5 +402,39 @@ func TestSupportedKeyTypes(t *testing.T) {
 	types := SupportedKeyTypes()
 	if len(types) != 5 {
 		t.Errorf("SupportedKeyTypes() returned %d types, want 5", len(types))
+	}
+}
+
+func TestGetSupportedKeyTypesInfo(t *testing.T) {
+	info := GetSupportedKeyTypesInfo()
+	if len(info) != 5 {
+		t.Errorf("GetSupportedKeyTypesInfo() returned %d types, want 5", len(info))
+	}
+
+	// Verify all key types have required fields
+	for _, keyInfo := range info {
+		if keyInfo.Name == "" {
+			t.Error("Key type info has empty Name")
+		}
+		if keyInfo.Description == "" {
+			t.Error("Key type info has empty Description")
+		}
+	}
+
+	// Verify ECDSA P-384 is marked as recommended
+	foundRecommended := false
+	for _, keyInfo := range info {
+		if keyInfo.Name == "ecdsa-p384" {
+			if !keyInfo.Recommended {
+				t.Error("ECDSA P-384 should be recommended")
+			}
+			foundRecommended = true
+			if len(keyInfo.Aliases) == 0 {
+				t.Error("ECDSA P-384 should have aliases")
+			}
+		}
+	}
+	if !foundRecommended {
+		t.Error("No recommended key type found")
 	}
 }

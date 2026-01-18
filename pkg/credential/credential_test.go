@@ -322,6 +322,132 @@ func TestIsPrintable(t *testing.T) {
 	}
 }
 
+func TestFormatRvVarName_AllCases(t *testing.T) {
+	tests := []struct {
+		name     string
+		variable protocol.RvVar
+		expected string
+	}{
+		{"DevOnly", protocol.RVDevOnly, "DevOnly"},
+		{"OwnerOnly", protocol.RVOwnerOnly, "OwnerOnly"},
+		{"IPAddress", protocol.RVIPAddress, "IPAddress"},
+		{"DevPort", protocol.RVDevPort, "DevPort"},
+		{"OwnerPort", protocol.RVOwnerPort, "OwnerPort"},
+		{"DNS", protocol.RVDns, "DNS"},
+		{"SvCertHash", protocol.RVSvCertHash, "SvCertHash"},
+		{"ClCertHash", protocol.RVClCertHash, "ClCertHash"},
+		{"UserInput", protocol.RVUserInput, "UserInput"},
+		{"WifiSsid", protocol.RVWifiSsid, "WifiSsid"},
+		{"WifiPw", protocol.RVWifiPw, "WifiPw"},
+		{"Medium", protocol.RVMedium, "Medium"},
+		{"Protocol", protocol.RVProtocol, "Protocol"},
+		{"Delaysec", protocol.RVDelaysec, "Delaysec"},
+		{"Bypass", protocol.RVBypass, "Bypass"},
+		{"ExtRV", protocol.RVExtRV, "ExtRV"},
+		{"Unknown", protocol.RvVar(99), "Unknown(99)"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatRvVarName(tt.variable)
+			if result != tt.expected {
+				t.Errorf("formatRvVarName(%d) = %s, want %s", tt.variable, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestFormatRvValue_AdditionalCases(t *testing.T) {
+	t.Run("Port with invalid CBOR", func(t *testing.T) {
+		instr := protocol.RvInstruction{
+			Variable: protocol.RVDevPort,
+			Value:    []byte{0xff, 0xff}, // Invalid CBOR
+		}
+		result := formatRvValue(instr)
+		if result == "" {
+			t.Error("formatRvValue should handle invalid CBOR for ports")
+		}
+	})
+
+	t.Run("DNS with raw bytes", func(t *testing.T) {
+		instr := protocol.RvInstruction{
+			Variable: protocol.RVDns,
+			Value:    []byte("raw-dns"),
+		}
+		result := formatRvValue(instr)
+		if result == "" {
+			t.Error("formatRvValue(DNS) should handle raw bytes")
+		}
+	})
+
+	t.Run("Protocol unknown value", func(t *testing.T) {
+		protoValue, _ := cbor.Marshal(uint8(99))
+		instr := protocol.RvInstruction{
+			Variable: protocol.RVProtocol,
+			Value:    protoValue,
+		}
+		result := formatRvValue(instr)
+		if !strings.Contains(result, "Unknown") {
+			t.Errorf("formatRvValue(Protocol) should handle unknown protocol, got %s", result)
+		}
+	})
+
+	t.Run("Medium unknown value", func(t *testing.T) {
+		mediumValue, _ := cbor.Marshal(uint8(99))
+		instr := protocol.RvInstruction{
+			Variable: protocol.RVMedium,
+			Value:    mediumValue,
+		}
+		result := formatRvValue(instr)
+		if !strings.Contains(result, "Unknown") {
+			t.Errorf("formatRvValue(Medium) should handle unknown medium, got %s", result)
+		}
+	})
+
+	t.Run("Delaysec with invalid CBOR", func(t *testing.T) {
+		instr := protocol.RvInstruction{
+			Variable: protocol.RVDelaysec,
+			Value:    []byte{0xff}, // Invalid CBOR
+		}
+		result := formatRvValue(instr)
+		if result == "" {
+			t.Error("formatRvValue should handle invalid CBOR for delaysec")
+		}
+	})
+
+	t.Run("Unknown variable with non-printable", func(t *testing.T) {
+		instr := protocol.RvInstruction{
+			Variable: protocol.RvVar(99),
+			Value:    []byte{0x00, 0x01, 0x02, 0xff}, // Non-printable
+		}
+		result := formatRvValue(instr)
+		if !strings.HasPrefix(result, "0x") {
+			t.Errorf("formatRvValue should format non-printable as hex, got %s", result)
+		}
+	})
+
+	t.Run("Unknown variable with printable", func(t *testing.T) {
+		instr := protocol.RvInstruction{
+			Variable: protocol.RvVar(99),
+			Value:    []byte("printable text"),
+		}
+		result := formatRvValue(instr)
+		if !strings.Contains(result, "printable") {
+			t.Errorf("formatRvValue should show printable text, got %s", result)
+		}
+	})
+}
+
+func TestSaveToFile_ErrorCases(t *testing.T) {
+	cred := createTestCredential(t)
+
+	// Test with invalid path (directory that doesn't exist)
+	err := SaveToFile(cred, "/nonexistent/directory/file.cbor")
+	if err == nil {
+		t.Error("SaveToFile should error when writing to invalid path")
+	}
+}
+
 // Helper function to create a test credential
 func createTestCredential(t *testing.T) *blob.DeviceCredential {
 	// Generate a new ECDSA key pair
