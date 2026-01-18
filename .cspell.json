@@ -150,7 +150,9 @@
     "yml",
     "yaml",
     "HEXVALUE",
-    "ECDSAP"
+    "ECDSAP",
+    "nolint",
+    "gosec"
   ],
   "flagWords": [],
   "ignoreRegExpList": [
