@@ -139,7 +139,9 @@
     "RVIP",
     "ofdo",
     "commitlintrc",
-    "hotspots"
+    "hotspots",
+    "keygen",
+    "credential"
   ],
   "flagWords": [],
   "ignoreRegExpList": [

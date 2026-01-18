@@ -357,11 +357,11 @@ func ToJSON(cred *blob.DeviceCredential, showSecrets bool) ([]byte, error) {
 	}
 
 	display := map[string]any{
-		"active":      cred.Active,
-		"version":     formatVersion(cred.Version),
-		"guid":        fmt.Sprintf("%x", cred.GUID),
-		"deviceInfo":  cred.DeviceInfo,
-		"rvInfo":      formattedRvInfo,
+		"active":     cred.Active,
+		"version":    formatVersion(cred.Version),
+		"guid":       fmt.Sprintf("%x", cred.GUID),
+		"deviceInfo": cred.DeviceInfo,
+		"rvInfo":     formattedRvInfo,
 		"publicKeyHash": map[string]any{
 			"algorithm": cred.PublicKeyHash.Algorithm.String(),
 			"value":     fmt.Sprintf("%x", cred.PublicKeyHash.Value),

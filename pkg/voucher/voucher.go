@@ -692,9 +692,9 @@ func ToJSON(voucher *fdo.Voucher) ([]byte, error) {
 
 // VerifyOptions contains optional parameters for voucher verification
 type VerifyOptions struct {
-	HmacSecret    []byte          // Optional: for header HMAC verification
-	PublicKeyHash *protocol.Hash  // Optional: for manufacturer key hash verification
-	TrustedRoots  *x509.CertPool  // Optional: for certificate chain verification
+	HmacSecret    []byte         // Optional: for header HMAC verification
+	PublicKeyHash *protocol.Hash // Optional: for manufacturer key hash verification
+	TrustedRoots  *x509.CertPool // Optional: for certificate chain verification
 }
 
 // VerifyCheck represents the result of a single verification check
