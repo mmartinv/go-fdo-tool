@@ -23,4 +23,5 @@ func Execute() {
 func init() {
 	rootCmd.AddCommand(voucherCmd)
 	rootCmd.AddCommand(credentialCmd)
+	rootCmd.AddCommand(keygenCmd)
 }
