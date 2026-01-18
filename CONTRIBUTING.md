@@ -15,7 +15,7 @@ Thank you for your interest in contributing to go-fdo-tool! This document provid
 
 ## Development Requirements
 
-- Go 1.21 or higher
+- Go 1.25 or higher
 - `gofmt` and `goimports` for code formatting
 - `golangci-lint` for linting (optional but recommended)
 

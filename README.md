@@ -26,7 +26,7 @@ FDO (FIDO Device Onboard) is a protocol for securely onboarding IoT devices. Own
 
 ### Prerequisites
 
-- Go 1.21 or higher
+- Go 1.25 or higher
 
 ### Build from source
 
