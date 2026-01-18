@@ -12,7 +12,10 @@ FDO (FIDO Device Onboard) is a protocol for securely onboarding IoT devices. Own
 - **JSON output**: Optional JSON format for scripting and programmatic processing
 - **Complete voucher details**: Shows all voucher components including manufacturer key, HMAC, certificate chains, and ownership entries
 - **Ownership transfer**: Extend vouchers by cryptographically signing ownership transfers to new owners
-- **Key format support**: Supports ECDSA (P-256, P-384) and RSA (2048, 3072) keys in both PEM and DER formats
+- **Voucher verification**: Comprehensive cryptographic verification with multiple levels (basic, full with secrets, trusted roots)
+- **Credential management**: Print and inspect device credentials with secure secret handling
+- **Key generation**: Generate FDO-compliant manufacturer and owner private keys
+- **Key format support**: Supports ECDSA (P-256, P-384) and RSA (2048, 3072, 4096) keys in both PEM and DER formats
   - **Note**: All keys in a voucher chain must use the same type and size as the manufacturer's key
 - **Certificate support**: Supports public keys, X.509 certificates, and certificate chains
 - **PEM format support**: Read and write vouchers in PEM-encoded format
@@ -138,7 +141,14 @@ The container runs as a non-root user (UID 1000) for security.
 ### Basic Command Structure
 
 ```bash
+# Voucher operations
 go-fdo-tool voucher <command> [arguments] [flags]
+
+# Credential operations
+go-fdo-tool credential <command> [arguments] [flags]
+
+# Key generation
+go-fdo-tool keygen [flags]
 ```
 
 ### Available Commands
@@ -385,6 +395,246 @@ Ownership Entries (2 transfers):
     ...
 ```
 
+#### Verify Ownership Voucher
+
+Verify the cryptographic integrity of an ownership voucher. The verification process checks multiple aspects of the voucher depending on what secrets are provided.
+
+```bash
+go-fdo-tool voucher verify <voucher-file> [flags]
+```
+
+**Verification Levels:**
+
+1. **Basic Verification (No Secrets Required)**:
+   - Ownership chain signatures (VerifyEntries)
+   - Certificate chain hash integrity (VerifyCertChainHash)
+   - Device certificate chain validation (self-signed trust)
+   - Manufacturer certificate chain validation (self-signed trust)
+
+2. **Full Verification (With Device Credential)**:
+   - All basic checks, plus:
+   - Header HMAC verification using device credential's HMAC secret
+   - Manufacturer public key hash verification
+
+3. **Trusted Roots Verification (Optional)**:
+   - Certificate chain validation against trusted CA roots
+
+**Flags:**
+- `--credential <file>` - Device credential file for full verification (CBOR format)
+- `--hmac-secret <hex>` - HMAC secret as hex string (alternative to --credential)
+- `--hmac-secret-file <file>` - File containing HMAC secret (hex or binary)
+- `--public-key-hash <hex>` - Public key hash as hex string (alternative to --credential)
+- `--public-key-hash-file <file>` - File containing public key hash
+- `--ca-certs <file>` - CA certificate bundle for trusted chain verification
+- `--json` - Output results in JSON format
+
+**Exit Codes:**
+- `0` - All verification checks passed
+- `1` - One or more verification checks failed
+- `2` - Usage/argument errors
+
+**Example (Basic Verification):**
+
+```bash
+./go-fdo-tool voucher verify example/voucher.pem
+```
+
+**Output:**
+```
+VERIFICATION RESULT: PASSED
+============================
+
+✓ Ownership Entries: Valid
+✓ Certificate Chain Hash: Valid
+✓ Device Certificate Chain: Valid (self-signed)
+✓ Manufacturer Certificate Chain: Valid (self-signed)
+
+All checks passed.
+```
+
+**Example (Full Verification with Device Credential):**
+
+```bash
+./go-fdo-tool voucher verify example/voucher.pem --credential device_cred.cbor
+```
+
+**Example (JSON Output):**
+
+```bash
+./go-fdo-tool voucher verify example/voucher.pem --json
+```
+
+**Output:**
+```json
+{
+  "passed": true,
+  "checks": [
+    {
+      "name": "Ownership Entries",
+      "passed": true,
+      "error": null
+    },
+    {
+      "name": "Certificate Chain Hash",
+      "passed": true,
+      "error": null
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "passed": 4,
+    "failed": 0
+  }
+}
+```
+
+**Example (Use in CI/CD):**
+
+```bash
+# Verify voucher and fail pipeline if invalid
+./go-fdo-tool voucher verify voucher.pem || exit 1
+```
+
+#### Print Device Credential
+
+Display the contents of a device credential file in human-readable text format (default) or JSON format.
+
+```bash
+go-fdo-tool credential print <credential-file> [flags]
+```
+
+**Flags:**
+- `--json` - Output in JSON format
+- `--show-secrets` - Display full private key and HMAC secret (hidden by default)
+
+**Example (Default Output - Secrets Hidden):**
+
+```bash
+./go-fdo-tool credential print device_credential.cbor
+```
+
+**Output:**
+```
+DEVICE CREDENTIAL
+=================
+
+Active: true
+Protocol Version: 1.1
+Device Info: Device description
+
+Public Key:
+  Type: ECDSA secp384r1 = NIST-P-384
+  -----BEGIN PUBLIC KEY-----
+  ...
+  -----END PUBLIC KEY-----
+
+Private Key Info:
+  Type: ECDSA
+  Curve: P-384
+  Bits: 384
+  [Use --show-secrets to display the full private key]
+
+HMAC Secret:
+  [Use --show-secrets to display the HMAC secret]
+  Hint: Secret is 48 bytes long
+```
+
+**Example (Show Secrets):**
+
+```bash
+./go-fdo-tool credential print device_credential.cbor --show-secrets
+```
+
+**Example (JSON Output):**
+
+```bash
+./go-fdo-tool credential print device_credential.cbor --json
+```
+
+#### Generate Keys
+
+Generate FDO-compliant private keys for use as manufacturer or owner keys.
+
+```bash
+go-fdo-tool keygen [flags]
+```
+
+**Supported Key Types:**
+- `ecdsa-p256` - ECDSA with NIST P-256 curve (secp256r1, prime256v1)
+- `ecdsa-p384` - ECDSA with NIST P-384 curve (secp384r1) - **Recommended for FDO**
+- `rsa-2048` - RSA with 2048-bit key
+- `rsa-3072` - RSA with 3072-bit key
+- `rsa-4096` - RSA with 4096-bit key
+
+**Flags:**
+- `-t, --type <type>` - Key type (default: ecdsa-p384)
+- `-f, --format <format>` - Output format: pem or der (default: pem)
+- `--private-key <file>` - Output file for private key (stdout if not specified)
+- `--public-key <file>` - Optional output file for public key
+- `--list` - List all supported key types in JSON format
+
+**Example (Generate ECDSA P-384 Key - Recommended):**
+
+```bash
+./go-fdo-tool keygen --type ecdsa-p384 --private-key owner_key.pem --public-key owner_pub.pem
+```
+
+**Output:**
+```
+Generating ecdsa-p384 key...
+Generated ECDSA key (384 bits)
+Curve: P-384
+Private key saved to: owner_key.pem
+Public key saved to: owner_pub.pem
+```
+
+**Example (List Supported Key Types):**
+
+```bash
+./go-fdo-tool keygen --list
+```
+
+**Output:**
+```json
+{
+  "supportedKeyTypes": [
+    {
+      "name": "ecdsa-p256",
+      "description": "ECDSA with NIST P-256 curve (256-bit)",
+      "aliases": ["secp256r1", "p256", "prime256v1"]
+    },
+    {
+      "name": "ecdsa-p384",
+      "description": "ECDSA with NIST P-384 curve (384-bit)",
+      "aliases": ["secp384r1", "p384"],
+      "recommended": true
+    },
+    {
+      "name": "rsa-2048",
+      "description": "RSA with 2048-bit key",
+      "aliases": ["rsa2048", "2048"]
+    }
+  ]
+}
+```
+
+**Example (Generate RSA Key in DER Format):**
+
+```bash
+./go-fdo-tool keygen --type rsa-2048 --format der --private-key key.der
+```
+
+**Example (Generate Key to Stdout for Piping):**
+
+```bash
+./go-fdo-tool keygen --type ecdsa-p384 > owner_key.pem
+```
+
+**Security Notes:**
+- Private keys are saved with restrictive permissions (0600 - owner read/write only)
+- Keys are generated in PKCS#8 format
+- Use ecdsa-p384 for best balance of security and performance in FDO
+
 ### Help Commands
 
 Get general help:
@@ -393,16 +643,25 @@ Get general help:
 go-fdo-tool --help
 ```
 
-Get help for the voucher command:
+Get help for specific commands:
 
 ```bash
+# Voucher commands
 go-fdo-tool voucher --help
+
+# Credential commands
+go-fdo-tool credential --help
+
+# Key generation
+go-fdo-tool keygen --help
 ```
 
 Get help for a specific subcommand:
 
 ```bash
 go-fdo-tool voucher print --help
+go-fdo-tool voucher verify --help
+go-fdo-tool credential print --help
 ```
 
 ## Ownership Voucher Format
@@ -480,13 +739,43 @@ The `example/` directory contains sample files for testing:
    ./go-fdo-tool voucher print example/voucher.pem --json > voucher.json
    ```
 
-5. **Chain multiple ownership transfers:**
+5. **Verify the voucher:**
+   ```bash
+   # Basic verification (no secrets required)
+   ./go-fdo-tool voucher verify example/voucher.pem
+
+   # Verify and check exit code
+   ./go-fdo-tool voucher verify example/voucher.pem && echo "Valid" || echo "Invalid"
+   ```
+
+6. **Generate new owner keys:**
+   ```bash
+   # Generate ECDSA P-384 key pair (recommended)
+   ./go-fdo-tool keygen --type ecdsa-p384 --private-key new_owner.pem --public-key new_owner_pub.pem
+
+   # List all supported key types
+   ./go-fdo-tool keygen --list
+   ```
+
+7. **Chain multiple ownership transfers:**
    ```bash
    # Extend to second owner (requires new_owner_key.pem and second_owner_cert.pem)
    ./go-fdo-tool voucher extend example/extended.pem example/new_owner_key.pem second_owner_cert.pem -o example/extended2.pem
 
    # View complete ownership chain
    ./go-fdo-tool voucher print example/extended2.pem
+
+   # Verify the extended voucher
+   ./go-fdo-tool voucher verify example/extended2.pem
+   ```
+
+8. **View device credential (if available):**
+   ```bash
+   # Print device credential (secrets hidden by default)
+   ./go-fdo-tool credential print device_credential.cbor
+
+   # Show full credential including secrets
+   ./go-fdo-tool credential print device_credential.cbor --show-secrets
    ```
 
 ## Development
@@ -523,12 +812,20 @@ go-fdo-tool/
 ├── main.go                     # Application entry point
 ├── cmd/
 │   ├── root.go                 # Root command definition
-│   └── voucher.go              # Voucher subcommand implementation
+│   ├── voucher.go              # Voucher subcommand implementation
+│   ├── credential.go           # Credential subcommand implementation
+│   └── keygen.go               # Key generation command
 └── pkg/
-    └── voucher/
-        ├── voucher.go                  # Voucher operations
-        ├── voucher_test.go             # Core unit tests
-        └── voucher_additional_test.go  # Additional tests
+    ├── voucher/
+    │   ├── voucher.go                  # Voucher operations
+    │   ├── voucher_test.go             # Core unit tests
+    │   └── voucher_additional_test.go  # Additional tests
+    ├── credential/
+    │   ├── credential.go               # Credential operations
+    │   └── credential_test.go          # Credential tests
+    └── keygen/
+        ├── keygen.go                   # Key generation operations
+        └── keygen_test.go              # Key generation tests
 ```
 
 ### Dependencies
