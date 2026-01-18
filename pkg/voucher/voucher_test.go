@@ -658,3 +658,287 @@ func TestFormatPublicKey(t *testing.T) {
 		t.Error("formatPublicKey() publicKey not in PEM format")
 	}
 }
+
+func TestVerify_BasicChecks(t *testing.T) {
+	// Test basic verification without secrets
+	voucher, err := LoadFromFile(filepath.Join(testDataDir, "voucher.pem"))
+	if err != nil {
+		t.Fatalf("Failed to load test voucher: %v", err)
+	}
+
+	result := Verify(voucher, nil)
+	if !result.Passed {
+		t.Error("Verify() basic checks failed for valid voucher")
+		for _, check := range result.Checks {
+			if !check.Passed {
+				t.Errorf("  Check '%s' failed: %v", check.Name, check.Error)
+			}
+		}
+	}
+
+	// Verify expected checks were performed
+	expectedChecks := []string{
+		"Ownership Entries",
+		"Certificate Chain Hash",
+		"Device Certificate Chain",
+		"Manufacturer Certificate Chain",
+	}
+
+	if len(result.Checks) < len(expectedChecks) {
+		t.Errorf("Verify() performed %d checks, expected at least %d", len(result.Checks), len(expectedChecks))
+	}
+
+	for _, expectedCheck := range expectedChecks {
+		found := false
+		for _, check := range result.Checks {
+			if check.Name == expectedCheck {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Verify() did not perform expected check: %s", expectedCheck)
+		}
+	}
+}
+
+func TestVerify_ExtendedVoucher(t *testing.T) {
+	// Test verification of extended voucher
+	voucher, err := LoadFromFile(filepath.Join(testDataDir, "extended.pem"))
+	if err != nil {
+		t.Fatalf("Failed to load test extended voucher: %v", err)
+	}
+
+	result := Verify(voucher, nil)
+	if !result.Passed {
+		t.Error("Verify() failed for valid extended voucher")
+		for _, check := range result.Checks {
+			if !check.Passed {
+				t.Errorf("  Check '%s' failed: %v", check.Name, check.Error)
+			}
+		}
+	}
+}
+
+func TestParseHmacSecret(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    []byte
+		wantErr bool
+	}{
+		{
+			name:    "hex without prefix",
+			input:   "deadbeef",
+			want:    []byte{0xde, 0xad, 0xbe, 0xef},
+			wantErr: false,
+		},
+		{
+			name:    "hex with 0x prefix",
+			input:   "0xdeadbeef",
+			want:    []byte{0xde, 0xad, 0xbe, 0xef},
+			wantErr: false,
+		},
+		{
+			name:    "hex with 0X prefix",
+			input:   "0Xdeadbeef",
+			want:    []byte{0xde, 0xad, 0xbe, 0xef},
+			wantErr: false,
+		},
+		{
+			name:    "invalid hex",
+			input:   "zzz",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParseHmacSecret(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseHmacSecret() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr {
+				if len(got) != len(tt.want) {
+					t.Errorf("ParseHmacSecret() length = %d, want %d", len(got), len(tt.want))
+					return
+				}
+				for i := range got {
+					if got[i] != tt.want[i] {
+						t.Errorf("ParseHmacSecret() byte[%d] = %x, want %x", i, got[i], tt.want[i])
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestLoadHmacSecretFromFile(t *testing.T) {
+	// Create a temporary directory for test files
+	tmpDir, err := os.MkdirTemp("", "voucher-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Test hex format file
+	hexFile := filepath.Join(tmpDir, "secret.hex")
+	if err := os.WriteFile(hexFile, []byte("deadbeef"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	secret, err := LoadHmacSecretFromFile(hexFile)
+	if err != nil {
+		t.Errorf("LoadHmacSecretFromFile() error = %v", err)
+	}
+	expected := []byte{0xde, 0xad, 0xbe, 0xef}
+	if len(secret) != len(expected) {
+		t.Errorf("LoadHmacSecretFromFile() length = %d, want %d", len(secret), len(expected))
+	}
+	for i := range secret {
+		if secret[i] != expected[i] {
+			t.Errorf("LoadHmacSecretFromFile() byte[%d] = %x, want %x", i, secret[i], expected[i])
+		}
+	}
+}
+
+func TestParsePublicKeyHash(t *testing.T) {
+	tests := []struct {
+		name      string
+		algorithm string
+		hexStr    string
+		wantAlg   protocol.HashAlg
+		wantErr   bool
+	}{
+		{
+			name:      "SHA256",
+			algorithm: "SHA256",
+			hexStr:    "abcd1234",
+			wantAlg:   protocol.Sha256Hash,
+			wantErr:   false,
+		},
+		{
+			name:      "SHA-256",
+			algorithm: "SHA-256",
+			hexStr:    "abcd1234",
+			wantAlg:   protocol.Sha256Hash,
+			wantErr:   false,
+		},
+		{
+			name:      "SHA384",
+			algorithm: "SHA384",
+			hexStr:    "abcd1234",
+			wantAlg:   protocol.Sha384Hash,
+			wantErr:   false,
+		},
+		{
+			name:      "unsupported algorithm",
+			algorithm: "MD5",
+			hexStr:    "abcd1234",
+			wantErr:   true,
+		},
+		{
+			name:      "invalid hex",
+			algorithm: "SHA256",
+			hexStr:    "zzz",
+			wantErr:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hash, err := ParsePublicKeyHash(tt.algorithm, tt.hexStr)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParsePublicKeyHash() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr {
+				if hash.Algorithm != tt.wantAlg {
+					t.Errorf("ParsePublicKeyHash() algorithm = %v, want %v", hash.Algorithm, tt.wantAlg)
+				}
+			}
+		})
+	}
+}
+
+func TestLoadPublicKeyHashFromFile(t *testing.T) {
+	// Create a temporary directory for test files
+	tmpDir, err := os.MkdirTemp("", "voucher-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Test valid hash file
+	hashFile := filepath.Join(tmpDir, "hash.txt")
+	if err := os.WriteFile(hashFile, []byte("SHA256:abcd1234"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	hash, err := LoadPublicKeyHashFromFile(hashFile)
+	if err != nil {
+		t.Errorf("LoadPublicKeyHashFromFile() error = %v", err)
+	}
+	if hash.Algorithm != protocol.Sha256Hash {
+		t.Errorf("LoadPublicKeyHashFromFile() algorithm = %v, want %v", hash.Algorithm, protocol.Sha256Hash)
+	}
+
+	// Test invalid format
+	invalidFile := filepath.Join(tmpDir, "invalid.txt")
+	if err := os.WriteFile(invalidFile, []byte("invalid"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = LoadPublicKeyHashFromFile(invalidFile)
+	if err == nil {
+		t.Error("LoadPublicKeyHashFromFile() should error on invalid format")
+	}
+}
+
+func TestLoadCACertsFromFile(t *testing.T) {
+	// Create a temporary directory for test files
+	tmpDir, err := os.MkdirTemp("", "voucher-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Generate a test certificate
+	key, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cert := createTestCertificate(t, key)
+
+	// Write certificate to PEM file
+	certFile := filepath.Join(tmpDir, "ca.pem")
+	pemBlock := &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: cert.Raw,
+	}
+	pemData := pem.EncodeToMemory(pemBlock)
+	if err := os.WriteFile(certFile, pemData, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Test loading
+	pool, err := LoadCACertsFromFile(certFile)
+	if err != nil {
+		t.Errorf("LoadCACertsFromFile() error = %v", err)
+	}
+	if pool == nil {
+		t.Error("LoadCACertsFromFile() returned nil pool")
+	}
+
+	// Test empty file
+	emptyFile := filepath.Join(tmpDir, "empty.pem")
+	if err := os.WriteFile(emptyFile, []byte(""), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = LoadCACertsFromFile(emptyFile)
+	if err == nil {
+		t.Error("LoadCACertsFromFile() should error on empty file")
+	}
+}

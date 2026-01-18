@@ -3,16 +3,22 @@ package voucher
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/hmac"
 	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/sha512"
 	"crypto/x509"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"net"
 	"os"
+	"strings"
 
 	"github.com/fido-device-onboard/go-fdo"
+	"github.com/fido-device-onboard/go-fdo/blob"
 	"github.com/fido-device-onboard/go-fdo/cbor"
 	"github.com/fido-device-onboard/go-fdo/protocol"
 )
@@ -682,4 +688,272 @@ func ToJSON(voucher *fdo.Voucher) ([]byte, error) {
 	}
 
 	return json.MarshalIndent(display, "", "  ")
+}
+
+// VerifyOptions contains optional parameters for voucher verification
+type VerifyOptions struct {
+	HmacSecret    []byte          // Optional: for header HMAC verification
+	PublicKeyHash *protocol.Hash  // Optional: for manufacturer key hash verification
+	TrustedRoots  *x509.CertPool  // Optional: for certificate chain verification
+}
+
+// VerifyCheck represents the result of a single verification check
+type VerifyCheck struct {
+	Name   string
+	Passed bool
+	Error  error
+}
+
+// VerifyResult contains the overall verification result
+type VerifyResult struct {
+	Passed bool
+	Checks []VerifyCheck
+}
+
+// Verify performs verification checks on a voucher
+// It always runs basic checks (entries, cert chain hash, etc.)
+// and runs additional checks if secrets are provided in opts
+func Verify(voucher *fdo.Voucher, opts *VerifyOptions) *VerifyResult {
+	if opts == nil {
+		opts = &VerifyOptions{}
+	}
+
+	result := &VerifyResult{
+		Passed: true,
+		Checks: []VerifyCheck{},
+	}
+
+	// Check 1: Verify ownership entries (cryptographic signatures)
+	checkResult := VerifyCheck{Name: "Ownership Entries"}
+	if err := voucher.VerifyEntries(); err != nil {
+		checkResult.Passed = false
+		checkResult.Error = err
+		result.Passed = false
+	} else {
+		checkResult.Passed = true
+	}
+	result.Checks = append(result.Checks, checkResult)
+
+	// Check 2: Verify certificate chain hash (if present)
+	checkResult = VerifyCheck{Name: "Certificate Chain Hash"}
+	if voucher.Header.Val.CertChainHash != nil {
+		if err := voucher.VerifyCertChainHash(); err != nil {
+			checkResult.Passed = false
+			checkResult.Error = err
+			result.Passed = false
+		} else {
+			checkResult.Passed = true
+		}
+		result.Checks = append(result.Checks, checkResult)
+	}
+
+	// Check 3: Verify device certificate chain (self-signed if no trusted roots)
+	if voucher.CertChain != nil && len(*voucher.CertChain) > 0 {
+		checkResult = VerifyCheck{Name: "Device Certificate Chain"}
+		if opts.TrustedRoots != nil {
+			if err := voucher.VerifyDeviceCertChain(opts.TrustedRoots); err != nil {
+				checkResult.Passed = false
+				checkResult.Error = err
+				result.Passed = false
+			} else {
+				checkResult.Passed = true
+			}
+		} else {
+			// Verify with nil roots (self-signed trust)
+			if err := voucher.VerifyDeviceCertChain(nil); err != nil {
+				checkResult.Passed = false
+				checkResult.Error = err
+				result.Passed = false
+			} else {
+				checkResult.Passed = true
+			}
+		}
+		result.Checks = append(result.Checks, checkResult)
+	}
+
+	// Check 4: Verify manufacturer certificate chain
+	checkResult = VerifyCheck{Name: "Manufacturer Certificate Chain"}
+	if opts.TrustedRoots != nil {
+		if err := voucher.VerifyManufacturerCertChain(opts.TrustedRoots); err != nil {
+			checkResult.Passed = false
+			checkResult.Error = err
+			result.Passed = false
+		} else {
+			checkResult.Passed = true
+		}
+	} else {
+		// Verify with nil roots (self-signed trust)
+		if err := voucher.VerifyManufacturerCertChain(nil); err != nil {
+			checkResult.Passed = false
+			checkResult.Error = err
+			result.Passed = false
+		} else {
+			checkResult.Passed = true
+		}
+	}
+	result.Checks = append(result.Checks, checkResult)
+
+	// Check 5: Verify header HMAC (if HMAC secret provided)
+	if len(opts.HmacSecret) > 0 {
+		checkResult = VerifyCheck{Name: "Header HMAC"}
+		// Create HMAC hash instances with the provided secret
+		hmacSha256 := hmac.New(sha256.New, opts.HmacSecret)
+		hmacSha384 := hmac.New(sha512.New384, opts.HmacSecret)
+		if err := voucher.VerifyHeader(hmacSha256, hmacSha384); err != nil {
+			checkResult.Passed = false
+			checkResult.Error = err
+			result.Passed = false
+		} else {
+			checkResult.Passed = true
+		}
+		result.Checks = append(result.Checks, checkResult)
+	}
+
+	// Check 6: Verify manufacturer key hash (if public key hash provided)
+	if opts.PublicKeyHash != nil {
+		checkResult = VerifyCheck{Name: "Manufacturer Key Hash"}
+		if err := voucher.VerifyManufacturerKey(*opts.PublicKeyHash); err != nil {
+			checkResult.Passed = false
+			checkResult.Error = err
+			result.Passed = false
+		} else {
+			checkResult.Passed = true
+		}
+		result.Checks = append(result.Checks, checkResult)
+	}
+
+	return result
+}
+
+// LoadDeviceCredentialFromFile loads a device credential from a CBOR file
+func LoadDeviceCredentialFromFile(path string) (*blob.DeviceCredential, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	var cred blob.DeviceCredential
+	if err := cbor.Unmarshal(data, &cred); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal device credential: %w", err)
+	}
+
+	return &cred, nil
+}
+
+// ParseHmacSecret parses an HMAC secret from a hex string
+func ParseHmacSecret(hexStr string) ([]byte, error) {
+	// Remove common prefixes
+	hexStr = strings.TrimPrefix(hexStr, "0x")
+	hexStr = strings.TrimPrefix(hexStr, "0X")
+	hexStr = strings.TrimSpace(hexStr)
+
+	secret, err := hex.DecodeString(hexStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode hex string: %w", err)
+	}
+
+	return secret, nil
+}
+
+// LoadHmacSecretFromFile loads an HMAC secret from a file
+// Tries to parse as hex first, then falls back to raw binary
+func LoadHmacSecretFromFile(path string) ([]byte, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	// Try to parse as hex first
+	hexStr := strings.TrimSpace(string(data))
+	secret, err := ParseHmacSecret(hexStr)
+	if err == nil {
+		return secret, nil
+	}
+
+	// Fall back to raw binary
+	return data, nil
+}
+
+// ParsePublicKeyHash parses a public key hash from a hex string with algorithm
+func ParsePublicKeyHash(algorithm string, hexStr string) (*protocol.Hash, error) {
+	// Remove common prefixes
+	hexStr = strings.TrimPrefix(hexStr, "0x")
+	hexStr = strings.TrimPrefix(hexStr, "0X")
+	hexStr = strings.TrimSpace(hexStr)
+
+	hashValue, err := hex.DecodeString(hexStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode hex string: %w", err)
+	}
+
+	// Parse algorithm
+	var algo protocol.HashAlg
+	switch strings.ToUpper(algorithm) {
+	case "SHA256", "SHA-256":
+		algo = protocol.Sha256Hash
+	case "SHA384", "SHA-384":
+		algo = protocol.Sha384Hash
+	default:
+		return nil, fmt.Errorf("unsupported hash algorithm: %s (supported: SHA256, SHA384)", algorithm)
+	}
+
+	return &protocol.Hash{
+		Algorithm: algo,
+		Value:     hashValue,
+	}, nil
+}
+
+// LoadPublicKeyHashFromFile loads a public key hash from a file
+// Expects format: "ALGORITHM:HEXVALUE" (e.g., "SHA256:abcd1234...")
+func LoadPublicKeyHashFromFile(path string) (*protocol.Hash, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	content := strings.TrimSpace(string(data))
+	parts := strings.SplitN(content, ":", 2)
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid format: expected 'ALGORITHM:HEXVALUE'")
+	}
+
+	return ParsePublicKeyHash(parts[0], parts[1])
+}
+
+// LoadCACertsFromFile loads CA certificates from a PEM file
+func LoadCACertsFromFile(path string) (*x509.CertPool, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	pool := x509.NewCertPool()
+	rest := data
+	count := 0
+
+	for {
+		block, remaining := pem.Decode(rest)
+		if block == nil {
+			break
+		}
+		rest = remaining
+
+		if block.Type != "CERTIFICATE" {
+			continue
+		}
+
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse certificate: %w", err)
+		}
+
+		pool.AddCert(cert)
+		count++
+	}
+
+	if count == 0 {
+		return nil, fmt.Errorf("no certificates found in file")
+	}
+
+	return pool, nil
 }
