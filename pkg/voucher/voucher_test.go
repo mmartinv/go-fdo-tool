@@ -71,13 +71,13 @@ func TestLoadFromFileInvalidPEM(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
 
 	// Write invalid PEM data
 	if _, err := tmpFile.Write([]byte("This is not valid PEM data")); err != nil {
 		t.Fatal(err)
 	}
-	tmpFile.Close()
+	_ = tmpFile.Close()
 
 	_, err = LoadFromFile(tmpFile.Name())
 	if err == nil {
@@ -100,8 +100,8 @@ func TestSaveToFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tmpFile.Close()
-	defer os.Remove(tmpFile.Name())
+	_ = tmpFile.Close()
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
 
 	// Save the voucher
 	if err := SaveToFile(voucher, tmpFile.Name()); err != nil {
@@ -209,7 +209,7 @@ func TestLoadPrivateKeyFromFile_RSA(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
 
 	keyBytes := x509.MarshalPKCS1PrivateKey(rsaKey)
 	pemBlock := &pem.Block{
@@ -219,7 +219,7 @@ func TestLoadPrivateKeyFromFile_RSA(t *testing.T) {
 	if err := pem.Encode(tmpFile, pemBlock); err != nil {
 		t.Fatal(err)
 	}
-	tmpFile.Close()
+	_ = tmpFile.Close()
 
 	// Load it back
 	key, err := LoadPrivateKeyFromFile(tmpFile.Name())
@@ -286,7 +286,7 @@ func TestLoadPublicKeyOrCertFromFile_PublicKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
 
 	pubKeyBytes, err := x509.MarshalPKIXPublicKey(&ecKey.PublicKey)
 	if err != nil {
@@ -299,7 +299,7 @@ func TestLoadPublicKeyOrCertFromFile_PublicKey(t *testing.T) {
 	if err := pem.Encode(tmpFile, pemBlock); err != nil {
 		t.Fatal(err)
 	}
-	tmpFile.Close()
+	_ = tmpFile.Close()
 
 	// Load it back
 	result, err := LoadPublicKeyOrCertFromFile(tmpFile.Name())
@@ -780,10 +780,11 @@ func TestLoadHmacSecretFromFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Test hex format file
 	hexFile := filepath.Join(tmpDir, "secret.hex")
+	//nolint:gosec // G306: Test file can be world-readable
 	if err := os.WriteFile(hexFile, []byte("deadbeef"), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -868,10 +869,11 @@ func TestLoadPublicKeyHashFromFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Test valid hash file
 	hashFile := filepath.Join(tmpDir, "hash.txt")
+	//nolint:gosec // G306: Test file can be world-readable
 	if err := os.WriteFile(hashFile, []byte("SHA256:abcd1234"), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -886,6 +888,7 @@ func TestLoadPublicKeyHashFromFile(t *testing.T) {
 
 	// Test invalid format
 	invalidFile := filepath.Join(tmpDir, "invalid.txt")
+	//nolint:gosec // G306: Test file can be world-readable
 	if err := os.WriteFile(invalidFile, []byte("invalid"), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -902,7 +905,7 @@ func TestLoadCACertsFromFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Generate a test certificate
 	key, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
@@ -918,6 +921,7 @@ func TestLoadCACertsFromFile(t *testing.T) {
 		Bytes: cert.Raw,
 	}
 	pemData := pem.EncodeToMemory(pemBlock)
+	//nolint:gosec // G306: Test file can be world-readable
 	if err := os.WriteFile(certFile, pemData, 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -933,6 +937,7 @@ func TestLoadCACertsFromFile(t *testing.T) {
 
 	// Test empty file
 	emptyFile := filepath.Join(tmpDir, "empty.pem")
+	//nolint:gosec // G306: Test file can be world-readable
 	if err := os.WriteFile(emptyFile, []byte(""), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -1046,9 +1051,10 @@ func TestLoadDeviceCredentialFromFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	invalidFile := filepath.Join(tmpDir, "invalid.cbor")
+	//nolint:gosec // G306: Test file can be world-readable
 	if err := os.WriteFile(invalidFile, []byte("invalid cbor data"), 0644); err != nil {
 		t.Fatal(err)
 	}

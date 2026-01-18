@@ -1,3 +1,4 @@
+// Package voucher provides functionality for FDO ownership vouchers
 package voucher
 
 import (
@@ -25,6 +26,7 @@ import (
 
 // LoadFromFile loads an ownership voucher from a PEM-encoded file
 func LoadFromFile(path string) (*fdo.Voucher, error) {
+	//nolint:gosec // G304: File path comes from user input in CLI tool
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
@@ -70,6 +72,7 @@ func SaveToFile(voucher *fdo.Voucher, path string) error {
 	}
 
 	// Write to file
+	//nolint:gosec // G306: Vouchers should be world-readable
 	if err := os.WriteFile(path, pemData, 0644); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
@@ -103,6 +106,7 @@ func ToPEM(voucher *fdo.Voucher) ([]byte, error) {
 // LoadPrivateKeyFromFile loads a private key from a PEM-encoded or DER-encoded file
 // Supports ECDSA and RSA private keys
 func LoadPrivateKeyFromFile(path string) (crypto.Signer, error) {
+	//nolint:gosec // G304: File path comes from user input in CLI tool
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read key file: %w", err)
@@ -178,6 +182,7 @@ func LoadPrivateKeyFromFile(path string) (crypto.Signer, error) {
 // LoadPublicKeyOrCertFromFile loads a public key or certificate from a PEM-encoded file
 // Returns either a public key (*ecdsa.PublicKey or *rsa.PublicKey) or a certificate chain
 func LoadPublicKeyOrCertFromFile(path string) (interface{}, error) {
+	//nolint:gosec // G304: File path comes from user input in CLI tool
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
@@ -827,6 +832,7 @@ func Verify(voucher *fdo.Voucher, opts *VerifyOptions) *VerifyResult {
 
 // LoadDeviceCredentialFromFile loads a device credential from a CBOR file
 func LoadDeviceCredentialFromFile(path string) (*blob.DeviceCredential, error) {
+	//nolint:gosec // G304: File path comes from user input in CLI tool
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
@@ -858,6 +864,7 @@ func ParseHmacSecret(hexStr string) ([]byte, error) {
 // LoadHmacSecretFromFile loads an HMAC secret from a file
 // Tries to parse as hex first, then falls back to raw binary
 func LoadHmacSecretFromFile(path string) ([]byte, error) {
+	//nolint:gosec // G304: File path comes from user input in CLI tool
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
@@ -906,6 +913,7 @@ func ParsePublicKeyHash(algorithm string, hexStr string) (*protocol.Hash, error)
 // LoadPublicKeyHashFromFile loads a public key hash from a file
 // Expects format: "ALGORITHM:HEXVALUE" (e.g., "SHA256:abcd1234...")
 func LoadPublicKeyHashFromFile(path string) (*protocol.Hash, error) {
+	//nolint:gosec // G304: File path comes from user input in CLI tool
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
@@ -922,6 +930,7 @@ func LoadPublicKeyHashFromFile(path string) (*protocol.Hash, error) {
 
 // LoadCACertsFromFile loads CA certificates from a PEM file
 func LoadCACertsFromFile(path string) (*x509.CertPool, error) {
+	//nolint:gosec // G304: File path comes from user input in CLI tool
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)

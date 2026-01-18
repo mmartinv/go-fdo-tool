@@ -1,3 +1,4 @@
+// Package keygen provides cryptographic key generation for FDO
 package keygen
 
 import (
@@ -16,22 +17,27 @@ import (
 type KeyType string
 
 const (
-	// ECDSA key types
-	KeyTypeECDSAP256 KeyType = "ecdsa-p256" // secp256r1 / NIST P-256 / prime256v1
-	KeyTypeECDSAP384 KeyType = "ecdsa-p384" // secp384r1 / NIST P-384
+	// KeyTypeECDSAP256 is ECDSA P-256 (secp256r1 / NIST P-256 / prime256v1)
+	KeyTypeECDSAP256 KeyType = "ecdsa-p256"
+	// KeyTypeECDSAP384 is ECDSA P-384 (secp384r1 / NIST P-384)
+	KeyTypeECDSAP384 KeyType = "ecdsa-p384"
 
-	// RSA key types
-	KeyTypeRSA2048 KeyType = "rsa-2048" // RSA 2048 bits
-	KeyTypeRSA3072 KeyType = "rsa-3072" // RSA 3072 bits
-	KeyTypeRSA4096 KeyType = "rsa-4096" // RSA 4096 bits
+	// KeyTypeRSA2048 is RSA with 2048-bit key
+	KeyTypeRSA2048 KeyType = "rsa-2048"
+	// KeyTypeRSA3072 is RSA with 3072-bit key
+	KeyTypeRSA3072 KeyType = "rsa-3072"
+	// KeyTypeRSA4096 is RSA with 4096-bit key
+	KeyTypeRSA4096 KeyType = "rsa-4096"
 )
 
 // Format represents the output format for the key
 type Format string
 
 const (
-	FormatPEM Format = "pem" // PEM encoded
-	FormatDER Format = "der" // DER encoded (raw binary)
+	// FormatPEM is PEM-encoded format
+	FormatPEM Format = "pem"
+	// FormatDER is DER-encoded format (raw binary)
+	FormatDER Format = "der"
 )
 
 // GenerateKey generates a new private key of the specified type
@@ -124,6 +130,7 @@ func SavePublicKey(key crypto.PublicKey, path string, format Format) error {
 		return err
 	}
 
+	//nolint:gosec // G306: Public keys should be world-readable
 	if err := os.WriteFile(path, data, 0644); err != nil {
 		return fmt.Errorf("failed to write public key: %w", err)
 	}

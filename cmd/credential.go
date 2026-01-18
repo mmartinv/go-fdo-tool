@@ -1,3 +1,4 @@
+// Package cmd implements CLI commands for the go-fdo-tool
 package cmd
 
 import (

@@ -13,6 +13,7 @@ var rootCmd = &cobra.Command{
 	Long:  `A command line tool for working with FIDO Device Onboard (FDO) ownership vouchers and device credentials.`,
 }
 
+// Execute runs the root command
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

@@ -392,7 +392,7 @@ func TestLoadPrivateKeyFromFile_PKCS8(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
 
 	pemBlock := &pem.Block{
 		Type:  "PRIVATE KEY",
@@ -401,7 +401,7 @@ func TestLoadPrivateKeyFromFile_PKCS8(t *testing.T) {
 	if err := pem.Encode(tmpFile, pemBlock); err != nil {
 		t.Fatal(err)
 	}
-	tmpFile.Close()
+	_ = tmpFile.Close()
 
 	// Load it back
 	key, err := LoadPrivateKeyFromFile(tmpFile.Name())
@@ -433,7 +433,7 @@ func TestLoadPrivateKeyFromFile_RSA_PKCS8(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
 
 	pemBlock := &pem.Block{
 		Type:  "PRIVATE KEY",
@@ -442,7 +442,7 @@ func TestLoadPrivateKeyFromFile_RSA_PKCS8(t *testing.T) {
 	if err := pem.Encode(tmpFile, pemBlock); err != nil {
 		t.Fatal(err)
 	}
-	tmpFile.Close()
+	_ = tmpFile.Close()
 
 	// Load it back
 	key, err := LoadPrivateKeyFromFile(tmpFile.Name())
@@ -474,12 +474,12 @@ func TestLoadPrivateKeyFromFile_DER_EC(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
 
 	if _, err := tmpFile.Write(derBytes); err != nil {
 		t.Fatal(err)
 	}
-	tmpFile.Close()
+	_ = tmpFile.Close()
 
 	// Load it back
 	key, err := LoadPrivateKeyFromFile(tmpFile.Name())
@@ -511,12 +511,12 @@ func TestLoadPrivateKeyFromFile_DER_PKCS8(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
 
 	if _, err := tmpFile.Write(pkcs8Bytes); err != nil {
 		t.Fatal(err)
 	}
-	tmpFile.Close()
+	_ = tmpFile.Close()
 
 	// Load it back
 	key, err := LoadPrivateKeyFromFile(tmpFile.Name())
@@ -545,12 +545,12 @@ func TestLoadPrivateKeyFromFile_DER_RSA_PKCS1(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
 
 	if _, err := tmpFile.Write(derBytes); err != nil {
 		t.Fatal(err)
 	}
-	tmpFile.Close()
+	_ = tmpFile.Close()
 
 	// Load it back
 	key, err := LoadPrivateKeyFromFile(tmpFile.Name())
@@ -569,13 +569,13 @@ func TestLoadPrivateKeyFromFile_InvalidDER(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
 
 	// Write invalid DER data
 	if _, err := tmpFile.Write([]byte{0x01, 0x02, 0x03, 0x04}); err != nil {
 		t.Fatal(err)
 	}
-	tmpFile.Close()
+	_ = tmpFile.Close()
 
 	_, err = LoadPrivateKeyFromFile(tmpFile.Name())
 	if err == nil {
@@ -596,7 +596,7 @@ func TestLoadPublicKeyOrCertFromFile_RSA(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
 
 	pubKeyBytes, err := x509.MarshalPKIXPublicKey(&rsaKey.PublicKey)
 	if err != nil {
@@ -609,7 +609,7 @@ func TestLoadPublicKeyOrCertFromFile_RSA(t *testing.T) {
 	if err := pem.Encode(tmpFile, pemBlock); err != nil {
 		t.Fatal(err)
 	}
-	tmpFile.Close()
+	_ = tmpFile.Close()
 
 	// Load it back
 	result, err := LoadPublicKeyOrCertFromFile(tmpFile.Name())
@@ -806,7 +806,7 @@ func TestLoadFromFile_WrongPEMType(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
 
 	// Write a certificate PEM instead of voucher
 	pemBlock := &pem.Block{
@@ -816,7 +816,7 @@ func TestLoadFromFile_WrongPEMType(t *testing.T) {
 	if err := pem.Encode(tmpFile, pemBlock); err != nil {
 		t.Fatal(err)
 	}
-	tmpFile.Close()
+	_ = tmpFile.Close()
 
 	_, err = LoadFromFile(tmpFile.Name())
 	if err == nil {
@@ -833,8 +833,8 @@ func TestLoadPublicKeyOrCertFromFile_EmptyFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tmpFile.Close()
-	defer os.Remove(tmpFile.Name())
+	_ = tmpFile.Close()
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
 
 	_, err = LoadPublicKeyOrCertFromFile(tmpFile.Name())
 	if err == nil {

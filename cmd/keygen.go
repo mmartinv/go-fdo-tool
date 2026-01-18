@@ -38,7 +38,7 @@ Examples:
 
   # Generate key to stdout (useful for piping)
   go-fdo-tool keygen --type ecdsa-p384`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		// Check if --list flag is set
 		listFlag, _ := cmd.Flags().GetBool("list")
 		if listFlag {

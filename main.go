@@ -1,3 +1,4 @@
+// Package main is the entry point for go-fdo-tool CLI
 package main
 
 import (

@@ -201,7 +201,7 @@ func TestSaveAndLoadPrivateKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	key, err := GenerateKey(KeyTypeECDSAP384)
 	if err != nil {
@@ -224,7 +224,7 @@ func TestSaveAndLoadPrivateKey(t *testing.T) {
 	}
 
 	// Verify PEM content
-	pemData, err := os.ReadFile(pemPath)
+	pemData, err := os.ReadFile(pemPath) //nolint:gosec // G304: Test file path from temp dir
 	if err != nil {
 		t.Errorf("Failed to read PEM file: %v", err)
 	}
@@ -240,7 +240,7 @@ func TestSaveAndLoadPrivateKey(t *testing.T) {
 	}
 
 	// Verify DER content
-	derData, err := os.ReadFile(derPath)
+	derData, err := os.ReadFile(derPath) //nolint:gosec // G304: Test file path from temp dir
 	if err != nil {
 		t.Errorf("Failed to read DER file: %v", err)
 	}
@@ -255,7 +255,7 @@ func TestSavePublicKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	key, err := GenerateKey(KeyTypeRSA2048)
 	if err != nil {
@@ -270,7 +270,7 @@ func TestSavePublicKey(t *testing.T) {
 	}
 
 	// Verify PEM content
-	pemData, err := os.ReadFile(pemPath)
+	pemData, err := os.ReadFile(pemPath) //nolint:gosec // G304: Test file path from temp dir
 	if err != nil {
 		t.Errorf("Failed to read PEM file: %v", err)
 	}

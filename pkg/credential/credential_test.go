@@ -63,7 +63,7 @@ func TestSaveToFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Save credential
 	testFile := filepath.Join(tmpDir, "test_cred.cbor")

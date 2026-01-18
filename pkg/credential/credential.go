@@ -1,3 +1,4 @@
+// Package credential provides functionality for FDO device credentials
 package credential
 
 import (
@@ -16,6 +17,7 @@ import (
 
 // LoadFromFile loads a device credential from a CBOR file
 func LoadFromFile(path string) (*blob.DeviceCredential, error) {
+	//nolint:gosec // G304: File path comes from user input in CLI tool
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
@@ -36,6 +38,7 @@ func SaveToFile(cred *blob.DeviceCredential, path string) error {
 		return fmt.Errorf("failed to marshal device credential: %w", err)
 	}
 
+	//nolint:gosec // G306: Credentials should be world-readable for use
 	if err := os.WriteFile(path, data, 0644); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
