@@ -105,7 +105,7 @@ jobs:
         ./go-fdo-tool-linux-amd64 voucher print example/voucher.pem | head -10
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: binaries
         path: |
